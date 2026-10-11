@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut, interactive-widget=resizes-content">
+  <title>Kalender</title>
+  <meta name="description" content="Schlichter Kalender mit Chat-Assistent">
+  <meta name="theme-color" content="#f7f7f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b0b0d" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Kalender">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <main class="cal">
+      <header class="top">
+        <div class="nav">
+          <button class="icon-btn" id="prevBtn" aria-label="Zurück"></button>
+          <h1 id="title">Kalender</h1>
+          <button class="icon-btn" id="nextBtn" aria-label="Weiter"></button>
+        </div>
+        <div class="actions">
+          <button class="pill" id="todayBtn">Heute</button>
+          <div class="seg" id="viewSeg" role="tablist">
+            <button data-view="month" role="tab">Monat</button>
+            <button data-view="week" role="tab">Woche</button>
+            <button data-view="list" role="tab">Liste</button>
+          </div>
+          <button class="icon-btn" id="addBtn" aria-label="Neuer Termin"></button>
+          <button class="icon-btn" id="settingsBtn" aria-label="Einstellungen"></button>
+        </div>
+      </header>
+      <section id="view" class="view"></section>
+      <section id="dayPanel" class="day-panel"></section>
+    </main>
+
+    <aside class="chat" id="chat">
+      <div class="chat-head">
+        <div class="chat-title">
+          <span class="spark" id="sparkIcon"></span>
+          <span>Assistent</span>
+          <span class="badge" id="modeBadge">Lokal</span>
+        </div>
+        <button class="icon-btn" id="chatClose" aria-label="Chat schliessen"></button>
+      </div>
+      <div class="msgs" id="msgs" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <form class="composer" id="composer" autocomplete="off">
+        <button type="button" class="icon-btn mic" id="micBtn" aria-label="Spracheingabe"></button>
+        <input id="input" type="text" enterkeyhint="send" placeholder="Sag mir, was ich eintragen soll …" aria-label="Nachricht">
+        <button type="submit" class="send" id="sendBtn" aria-label="Senden"></button>
+      </form>
+    </aside>
+  </div>
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- Termin bearbeiten -->
+  <dialog id="eventDlg" class="sheet">
+    <form method="dialog" id="eventForm">
+      <div class="sheet-head">
+        <h2 id="eventDlgTitle">Neuer Termin</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Schliessen"></button>
+      </div>
+      <input name="title" class="big-input" placeholder="Titel" required>
+      <div class="cat-picker" id="catPicker"></div>
+      <div class="row">
+        <label>Datum<input type="date" name="date" required></label>
+        <label class="switch-label"><span>Ganztägig</span><input type="checkbox" name="allday" class="switch"></label>
+      </div>
+      <div class="row times">
+        <label>Von<input type="time" name="start"></label>
+        <label>Bis<input type="time" name="end"></label>
+      </div>
+      <label>Ort<input name="location" placeholder="z.B. Zimmer 204"></label>
+      <div class="row">
+        <label>Wiederholen
+          <select name="repeat">
+            <option value="">Nie</option>
+            <option value="daily">Täglich</option>
+            <option value="weekly">Wöchentlich</option>
+            <option value="biweekly">Alle 2 Wochen</option>
+            <option value="monthly">Monatlich</option>
+            <option value="yearly">Jährlich</option>
+          </select>
+        </label>
+        <label>Bis (optional)<input type="date" name="repeatUntil"></label>
+      </div>
+      <label>Erinnerung
+        <select name="reminder">
+          <option value="">Keine</option>
+          <option value="0">Zum Zeitpunkt</option>
+          <option value="10">10 Min. vorher</option>
+          <option value="30">30 Min. vorher</option>
+          <option value="60">1 Std. vorher</option>
+          <option value="1440">1 Tag vorher</option>
+          <option value="2880">2 Tage vorher</option>
+        </select>
+      </label>
+      <label>Notizen<textarea name="notes" rows="2" placeholder="Optional"></textarea></label>
+      <div class="sheet-foot">
+        <button type="button" class="btn danger ghost" id="deleteBtn">Löschen</button>
+        <span class="grow"></span>
+        <button type="button" class="btn ghost" data-close>Abbrechen</button>
+        <button type="submit" class="btn primary" value="save">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Einstellungen -->
+  <dialog id="settingsDlg" class="sheet">
+    <div class="sheet-head">
+      <h2>Einstellungen</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Schliessen"></button>
+    </div>
+
+    <div class="group">
+      <div class="group-title">Darstellung</div>
+      <div class="seg full" id="themeSeg">
+        <button data-theme-set="auto">Automatisch</button>
+        <button data-theme-set="light">Hell</button>
+        <button data-theme-set="dark">Dunkel</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-title">Erinnerungen</div>
+      <label class="switch-label"><span>Benachrichtigungen</span><input type="checkbox" id="notifToggle" class="switch"></label>
+      <p class="hint">Erinnerungen erscheinen, solange die App geöffnet ist (auch im Hintergrund-Tab).</p>
+    </div>
+
+    <div class="group">
+      <div class="group-title">KI-Assistent (optional)</div>
+      <label class="switch-label"><span>Claude verwenden</span><input type="checkbox" id="aiToggle" class="switch"></label>
+      <div id="aiFields">
+        <label>API-Schlüssel<input type="password" id="apiKey" placeholder="sk-ant-…" autocomplete="off"></label>
+        <label>Modell
+          <select id="modelSel">
+            <option value="claude-opus-5-5">Claude Opus 5.5 – am klügsten</option>
+            <option value="claude-sonnet-5-5">Claude Sonnet 5.5 – ausgewogen</option>
+            <option value="claude-haiku-5-5">Claude Haiku 5.5 – schnell &amp; günstig</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Ohne KI versteht der eingebaute Assistent viele Sätze auch offline. Mit einem Anthropic-API-Schlüssel versteht er fast alles. Der Schlüssel bleibt nur auf diesem Gerät.</p>
+    </div>
+
+    <div class="group">
+      <div class="group-title">Daten</div>
+      <div class="btn-row">
+        <button class="btn" id="exportJson">Sichern (.json)</button>
+        <button class="btn" id="importJson">Wiederherstellen</button>
+        <button class="btn" id="exportIcs">Export (.ics)</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <p class="hint">Termine werden auf diesem Gerät gespeichert. Mit „Sichern“ und „Wiederherstellen“ kannst du sie aufs Handy oder den Laptop übertragen.</p>
+      <button class="btn danger ghost" id="clearAll">Alle Termine löschen</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/store.js"></script>
+  <script src="js/dateparse.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
