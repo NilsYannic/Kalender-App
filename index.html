@@ -14,16 +14,23 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="app">
     <main class="cal">
       <header class="top">
-        <div class="nav">
-          <button class="icon-btn" id="prevBtn" aria-label="Zurück"></button>
-          <h1 id="title">Kalender</h1>
-          <button class="icon-btn" id="nextBtn" aria-label="Weiter"></button>
+        <div class="heading">
+          <div class="eyebrow" id="eyebrow"></div>
+          <div class="nav">
+            <h1 id="title">Kalender</h1>
+            <button class="icon-btn" id="prevBtn" aria-label="Zurück"></button>
+            <button class="icon-btn" id="nextBtn" aria-label="Weiter"></button>
+          </div>
+          <div class="subtitle" id="subtitle"></div>
         </div>
         <div class="actions">
           <button class="pill" id="todayBtn">Heute</button>
@@ -31,8 +38,9 @@
             <button data-view="month" role="tab">Monat</button>
             <button data-view="week" role="tab">Woche</button>
             <button data-view="list" role="tab">Liste</button>
+            <span class="seg-thumb"></span>
           </div>
-          <button class="icon-btn" id="addBtn" aria-label="Neuer Termin"></button>
+          <button class="icon-btn solid" id="addBtn" aria-label="Neuer Termin"></button>
           <button class="icon-btn" id="settingsBtn" aria-label="Einstellungen"></button>
         </div>
       </header>
@@ -44,7 +52,7 @@
       <div class="chat-head">
         <div class="chat-title">
           <span class="spark" id="sparkIcon"></span>
-          <span>Assistent</span>
+          <span class="name">Assistent<small id="chatStatus">Bereit</small></span>
           <span class="badge" id="modeBadge">Lokal</span>
         </div>
         <button class="icon-btn" id="chatClose" aria-label="Chat schliessen"></button>
@@ -71,8 +79,9 @@
       <div class="cat-picker" id="catPicker"></div>
       <div class="row">
         <label>Datum<input type="date" name="date" required></label>
-        <label class="switch-label"><span>Ganztägig</span><input type="checkbox" name="allday" class="switch"></label>
+        <label>Bis (mehrtägig)<input type="date" name="endDate"></label>
       </div>
+      <label class="switch-label"><span>Ganztägig</span><input type="checkbox" name="allday" class="switch"></label>
       <div class="row times">
         <label>Von<input type="time" name="start"></label>
         <label>Bis<input type="time" name="end"></label>
@@ -125,6 +134,7 @@
         <button data-theme-set="auto">Automatisch</button>
         <button data-theme-set="light">Hell</button>
         <button data-theme-set="dark">Dunkel</button>
+        <span class="seg-thumb"></span>
       </div>
     </div>
 

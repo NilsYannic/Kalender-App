@@ -6,62 +6,157 @@
   const w = (src, flags = 'iu') => new RegExp(`${L}(?:${src})${R}`, flags);
 
   const CAT_WORDS = {
-    pruefung: 'prüfung|pruefung|prüfungen|test|tests|klausur|probe|schularbeit|vortrag|präsentation|praesentation|quiz|lernkontrolle|lk|matur|\\p{L}*prüfung|\\p{L}*test',
-    hausaufgabe: 'hausaufgabe|hausaufgaben|hausi|hausis|aufgabe|aufgaben|abgabe|abgeben|lernen|üben|ueben|lesen|arbeitsblatt|\\p{L}*aufgaben?',
-    sport: 'training|trainieren|fussball|fußball|sport|turnen|schwimmen|tennis|handball|unihockey|volleyball|basketball|joggen|laufen|gym|fitness|tanzen|tanz|reiten|ski|snowboard|match|klettern|velo|\\p{L}*training',
-    freizeit: 'kino|party|geburtstag|treffen|ausflug|konzert|essen|chillen|gamen|feier|ferien|urlaub|shoppen|film|abmachen|übernachten|freunde?|freundin',
-    termin: 'arzt|ärztin|zahnarzt|zahnärztin|kieferorthopäde|kieferorthopäd\\p{L}*|kfo|coiffeur|friseur|frisör|termin|optiker|physio|therapie|besprechung|vorstellungsgespräch|schnupperlehre|schnuppern|bewerbung',
-    schule: 'schule|unterricht|lektion|elternabend|schulreise|exkursion|nachhilfe|klassenlager|lager|sporttag|projektwoche|schulfest|stundenplan|wahlfach|freifach',
+    pruefung: 'prüfung|pruefung|prüfungen|test|tests|klausur|probe|schularbeit|vortrag|präsentation|praesentation|referat|quiz|lernkontrolle|lk|matur|\\p{L}*prüfung|\\p{L}*test|\\p{L}*vortrag',
+    hausaufgabe: 'hausaufgabe|hausaufgaben|hausi|hausis|ha|aufgabe|aufgaben|abgabe|abgeben|lernen|üben|ueben|lesen|arbeitsblatt|lernzeit|\\p{L}*aufgaben?',
+    sport: 'training|trainieren|fussball|fußball|sport|turnen|schwimmen|tennis|handball|unihockey|volleyball|basketball|joggen|laufen|gym|fitness|tanzen|tanz|reiten|ski|snowboard|match|klettern|velo|biken|judo|karate|\\p{L}*training|\\p{L}*turnier',
+    freizeit: 'kino|party|geburtstag|treffen|ausflug|konzert|essen|chillen|gamen|feier|ferien|urlaub|shoppen|film|abmachen|übernachten|freunde?|freundin|date|grillieren|brunch|zmittag|znacht|festival',
+    termin: 'arzt\\p{L}*|\\p{L}*termin|ärztin|zahnarzt|zahnärztin|kieferorthopäde|kieferorthopäd\\p{L}*|kfo|coiffeur|friseur|frisör|termin|optiker|physio|therapie|besprechung|vorstellungsgespräch|schnupperlehre|schnuppern|bewerbung|impfung|kontrolle|dentalhygiene',
+    schule: 'schule|unterricht|lektion|elternabend|schulreise|exkursion|nachhilfe|klassenlager|lager|sporttag|projektwoche|schulfest|stundenplan|wahlfach|freifach|musikunterricht|klavier\\p{L}*|gitarre\\p{L}*|chor|orchester',
   };
-  const SUBJECTS = new Set(['mathe', 'mathematik', 'deutsch', 'englisch', 'franz', 'französisch', 'franzoesisch', 'bio', 'biologie',
-    'chemie', 'physik', 'geschichte', 'geo', 'geografie', 'geographie', 'informatik', 'musik', 'bg', 'bildnerisches', 'wirtschaft',
-    'latein', 'italienisch', 'spanisch', 'religion', 'philosophie', 'ethik', 'wr', 'ef', 'sf', 'kalender', 'der', 'die', 'das']);
+  // Schulfächer: Schreibweise für Titel
+  const SUBJECTS = {
+    mathe: 'Mathe', mathematik: 'Mathematik', deutsch: 'Deutsch', englisch: 'Englisch', english: 'Englisch', franz: 'Franz',
+    französisch: 'Französisch', franzoesisch: 'Französisch', bio: 'Bio', biologie: 'Biologie', chemie: 'Chemie', physik: 'Physik',
+    geschichte: 'Geschichte', geo: 'Geo', geografie: 'Geografie', geographie: 'Geografie', informatik: 'Informatik', musik: 'Musik',
+    bg: 'BG', wirtschaft: 'Wirtschaft', wr: 'WR', latein: 'Latein', italienisch: 'Italienisch', italiano: 'Italienisch', spanisch: 'Spanisch',
+    religion: 'Religion', philosophie: 'Philosophie', ethik: 'Ethik', nt: 'NT', mint: 'MINT', ef: 'EF', sf: 'SF', psychologie: 'Psychologie',
+    pädagogik: 'Pädagogik', griechisch: 'Griechisch', rus: 'Russisch', russisch: 'Russisch', chinesisch: 'Chinesisch', ttg: 'TTG', werken: 'Werken',
+  };
+  const TYPES = {
+    prüfung: 'Prüfung', pruefung: 'Prüfung', test: 'Test', probe: 'Probe', klausur: 'Klausur', vortrag: 'Vortrag', präsentation: 'Präsentation',
+    referat: 'Referat', quiz: 'Quiz', lernkontrolle: 'Lernkontrolle', hausaufgabe: 'Hausaufgabe', hausaufgaben: 'Hausaufgaben', aufgaben: 'Aufgaben',
+    hausi: 'Hausaufgabe', hausis: 'Hausaufgaben', ha: 'Hausaufgabe', abgabe: 'Abgabe', lektion: 'Lektion', unterricht: 'Unterricht', nachhilfe: 'Nachhilfe',
+    lernen: 'lernen', üben: 'üben', ueben: 'üben', arbeitsblatt: 'Arbeitsblatt', dossier: 'Dossier',
+  };
+  // Orte, die auch kleingeschrieben erkannt werden
+  const PLACES = 'aula|turnhalle|sporthalle|halle|mensa|bibliothek|bibli|mediothek|zimmer|raum|hallenbad|schwimmbad|freibad|kino|stadion|schule|gymnasium|schulhaus|kirche|bahnhof|café|cafe|restaurant|park|praxis|spital|zentrum|eishalle|labor|musikschule|saal|klasse|klassenzimmer|pausenhalle|sportplatz|fussballplatz|platz|büro|stadt|innenstadt|migros|coop|mall|einkaufszentrum';
 
   const norm = (s) => s.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, ' ').trim();
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
   function detectCategory(text) {
     for (const [cat, words] of Object.entries(CAT_WORDS)) if (w(words).test(text)) return cat;
+    if (Object.keys(SUBJECTS).some((s) => w(s).test(text))) return 'schule';
     return 'sonstiges';
   }
 
+  // Ort: "im Zimmer 204", "in der Aula", "bei Lisa", "Ort: Thun", "@Migros"
   function extractLocation(text) {
-    const m = text.match(/(^|\s)(im|in der|in dem|in|bei|beim|auf dem|auf der|Im|In|Bei|Beim|Ort:|@)\s*((?:[A-ZÄÖÜ][\p{L}\d-]*|\d+[a-z]?))(?:\s+(\d+[a-zA-Z]?|[A-ZÄÖÜ]\d+[\p{L}\d]*))?/u);
-    if (!m) return { location: '', text };
-    const word = m[3];
-    if (SUBJECTS.has(word.toLowerCase())) return { location: '', text };
-    let loc = word + (m[4] ? ' ' + m[4] : '');
-    if (/^bei/i.test(m[2])) loc = 'bei ' + loc;
-    return { location: loc, text: text.slice(0, m.index) + m[1] + text.slice(m.index + m[0].length) };
+    let m = text.match(/(?:^|\s)(?:ort|wo|treffpunkt)\s*:\s*([^,;.]+)/iu);
+    if (m) return { location: cap(m[1].trim()), text: text.replace(m[0], ' ') };
+    m = text.match(/(?:^|\s)@\s*([\p{L}\d][\p{L}\d -]*?)(?=$|[,;.]|\s(?:um|am|ab|von|bis)\s)/iu);
+    if (m) return { location: cap(m[1].trim()), text: text.replace(m[0], ' ') };
+    m = text.match(/(?:^|\s)bei\s+(mir|uns)(?:\s+(?:zu\s*hause|zuhause|daheim))?(?=$|[\s,.;])/iu)
+      || text.match(/(?:^|\s)(zu\s*hause|zuhause|daheim)(?=$|[\s,.;])/iu);
+    if (m) return { location: /^(mir|uns)$/i.test(m[1]) ? `bei ${m[1].toLowerCase()}` : 'Zuhause', text: text.replace(m[0], ' ') };
+
+    const pre = '(?:im|in der|in dem|in|beim|bei der|bei dem|auf dem|auf der|vor der|vor dem|vorm|am)';
+    // "bei nico" (klein geschrieben) -> "bei Nico"
+    m = text.match(/(^|\s)bei\s+([a-zäöü][\p{L}-]{2,})(?=$|[\s,.;!?])/u);
+    if (m && !/^(der|die|das|dem|den|einem|einer|regen|schönem|schlechtem|bedarf|gelegenheit|mir|uns|euch|ihm|ihr|ihnen)$/i.test(m[2])) {
+      return { location: 'bei ' + cap(m[2]), text: text.slice(0, m.index) + m[1] + text.slice(m.index + m[0].length) };
+    }
+    // bekannte Orte (auch klein geschrieben) + optionale Nummer/Name
+    m = text.match(new RegExp(`(^|\\s)(${pre})\\s+((?:${PLACES})\\p{L}*)((?:\\s+(?:\\d+[\\p{L}]?|[A-ZÄÖÜ][\\p{L}\\d-]*))?)(?=$|[\\s,.;!?])`, 'iu'));
+    if (m) return { location: cap(m[3]) + m[4], text: text.slice(0, m.index) + m[1] + text.slice(m.index + m[0].length) };
+    // gross geschriebene Namen: "in Thun", "bei Lisa", "im Hallenbad Spiez"
+    m = text.match(new RegExp(`(^|\\s)(${pre}|bei|Im|In|Bei|Beim)\\s+([A-ZÄÖÜ][\\p{L}\\d-]*|\\d+[a-z]?)((?:\\s+(?:\\d+[\\p{L}]?|[A-ZÄÖÜ]\\d+[\\p{L}\\d]*|[A-ZÄÖÜ][\\p{L}-]+(?=$|[\\s,.;!?]))){0,3})`, 'u'));
+    if (m) {
+      const word = m[3];
+      const lw = word.toLowerCase();
+      if (SUBJECTS[lw] || DP.WEEKDAYS[lw] !== undefined || /^(kalender|der|die|das|ferien|pause|mittag|abend|morgen|nacht)$/i.test(lw)) return { location: '', text };
+      // "am" nur vor Orten (am See, am Bahnhof) – nicht "am Freitag"
+      if (/^am$/i.test(m[2])) return { location: '', text };
+      let loc = word + m[4];
+      if (/^bei(?!m)/i.test(m[2])) loc = 'bei ' + loc;
+      return { location: loc, text: text.slice(0, m.index) + m[1] + text.slice(m.index + m[0].length) };
+    }
+    return { location: '', text };
+  }
+
+  // Zusatzinfos -> Notizen
+  function extractNotes(text) {
+    const notes = [];
+    let m;
+    if ((m = text.match(/(?:^|\s)(?:notiz|notizen|info|infos|details?|beschreibung|hinweis|bemerkung|beachte)\s*:\s*(.+)$/iu))) {
+      notes.push(m[1].trim()); text = text.slice(0, m.index);
+    }
+    while ((m = text.match(/\(([^)]{2,})\)/u))) { notes.push(m[1].trim()); text = text.replace(m[0], ' '); }
+    if ((m = text.match(/(?:^|[\s,])(?:und\s+)?(?:mitnehmen|mitbringen|nicht vergessen)\s*:\s*([^;.]+)/iu))) {
+      notes.push('Mitnehmen: ' + m[1].trim()); text = text.replace(m[0], ' ');
+    }
+    if ((m = text.match(/(?:^|[\s,])(?:und\s+)?(?:bring|bringe|nimm|nehme)\s+(.+?)\s+mit(?=$|[\s,.;!])/iu))) {
+      notes.push('Mitnehmen: ' + m[1].trim()); text = text.replace(m[0], ' ');
+    }
+    if ((m = text.match(/(?:^|[\s,])(?:über|ueber|zum thema|thema|stoff|themen)\s*:?\s+(?!(?:mittag|das wochenende|nacht)\b)([^,;.]+?)(?=$|[,;.!?]|\s(?:um|am|ab|von|bis|im|in der|und erinner)\s)/iu))) {
+      notes.push('Thema: ' + cap(m[1].trim())); text = text.replace(m[0], ' ');
+    }
+    // Seiten/Aufgaben: "S. 45 Nr. 3 und 4", "Seite 12-14", "Kapitel 3"
+    const refRe = /(?:^|\s)((?:s\.|seite|seiten|nr\.?|nummer|nummern|aufgabe|aufgaben|kapitel|kap\.|übung|uebung|ex\.?|lektion|unit|lesson)\s*\d+[a-z]?(?:\s*(?:[-–,/]|und|bis)\s*\d+[a-z]?)*)/iu;
+    const refs = [];
+    while ((m = text.match(refRe))) { refs.push(m[1].trim().replace(/^s\./i, 'S.')); text = text.replace(m[0], ' '); }
+    if (refs.length) notes.push(refs.join(', '));
+    return { notes: notes.join('\n'), text };
   }
 
   function cleanTitle(text) {
     let t = ' ' + text + ' ';
     const kill = [
-      'bitte|hey|hallo|hoi|sali|ok|okay|kannst du|könntest du|würdest du|du|mal|doch|kurz|einfach|noch',
-      '(?:trag|trage|schreib|schreibe|füg|füge|fueg|fuege|setz|setze|mach|mache|erstell|erstelle|plan|plane|notier|notiere|speicher|speichere|merk|merke|leg|lege)(?:\\s+(?:mir|uns|mal|doch))*',
-      'in (?:den|meinen|meinem|unseren) kalender|im kalender|in den plan|in meinen plan',
-      'eintragen|hinzufügen|hinzufuegen|notieren|speichern|erstellen|einplanen|merken|anlegen',
-      'ich habe|ich hab|hab ich|habe ich|ich muss|muss ich|ich gehe|ich geh|wir haben|wir gehen|ich bin|ich will|ich möchte|ich moechte|es gibt|es ist|da ist|ich treffe|treffe ich',
+      'bitte|hey|hallo|hoi|sali|ok|okay|kannst du|könntest du|würdest du|du|mal|doch|kurz|einfach|noch|dann|halt|eben|ungefähr|ungefaehr|circa|ca\\.?|etwa|lang|wichtig|dringend',
+      '(?:trag|trage|schreib|schreibe|füg|füge|fueg|fuege|setz|setze|mach|mache|erstell|erstelle|plan|plane|notier|notiere|speicher|speichere|merk|merke|leg|lege)(?:\\s+(?:mir|uns|mal|doch|bitte))*',
+      'in (?:den|meinen|meinem|unseren) kalender|im kalender|in den plan|in meinen plan|zum kalender',
+      'eintragen|hinzufügen|hinzufuegen|notieren|speichern|erstellen|einplanen|merken|anlegen|vormerken',
+      'ich habe|ich hab|hab ich|habe ich|ich muss|muss ich|ich gehe|ich geh|wir haben|wir gehen|ich bin|ich will|ich möchte|ich moechte|es gibt|es ist|da ist|ich treffe|treffe ich|ich hätte|ich habe da|da habe ich|ich schreibe|wir schreiben|schreiben wir|ich darf|ich soll',
       '(?:einen|ein|eine|neuen|neuer|neues)\\s+(?:termin|eintrag|event)\\s*:?|termin\\s*:',
-      'dass|daran|dran|mich',
+      'dass|daran|dran|mich|stattfinden|findet statt|statt',
     ];
     for (const k of kill) t = t.replace(w(k, 'giu'), ' ');
-    t = t.replace(/[.!?,;:]+/g, ' ').replace(/\s+/g, ' ').trim();
-    const lead = /^(an|zum|zur|für|fuer|wegen|mit dem|der|die|das|den|dem|ein|eine|einen|einem|einer|meine|meinen|mein|meinem|meiner|und|am|um|auf|ist)\s+/i;
-    const trail = /\s+(ist|sind|habe|hab|muss|gehe|statt|stattfindet|findet|haben|hat|ein|an|hinzu|auf|machen|gehen|und|am|um|bis|ab)$/i;
+    t = t.replace(/[!?,;:]+/g, ' ').replace(/(^|\s)\.+|\.+(\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
+    const lead = /^(an|ans|ums|zum|zur|für|fuer|wegen|mit dem|der|die|das|den|dem|ein|eine|einen|einem|einer|meine|meinen|mein|meinem|meiner|und|am|um|auf|ist|so|also|wir|ich|-)\s+/i;
+    const trail = /\s+(ist|sind|habe|hab|muss|gehe|haben|hat|ein|an|hinzu|auf|machen|gehen|und|am|um|bis|ab|so|vor|in|im|mit|-)$/i;
     let prev;
     do { prev = t; t = t.replace(lead, '').replace(trail, '').trim(); } while (t !== prev);
-    if (/^(ein|hinzu|an|auf|termin|eintrag)$/i.test(t)) t = '';
-    return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
+    if (/^(ein|hinzu|an|auf|termin|eintrag|so|und)$/i.test(t)) t = '';
+    return smartTitle(t);
+  }
+
+  // "prüfung in mathe" -> "Mathe-Prüfung", "lernen für bio" -> "Bio lernen"
+  function smartTitle(t) {
+    if (!t) return '';
+    let words = t.split(' ');
+    const si = words.findIndex((x) => SUBJECTS[x.toLowerCase().replace(/-.*/, '')]);
+    const ti = words.findIndex((x) => TYPES[x.toLowerCase()]);
+    if (si >= 0 && ti >= 0 && si !== ti) {
+      const subj = SUBJECTS[words[si].toLowerCase()] || cap(words[si]);
+      const type = TYPES[words[ti].toLowerCase()];
+      const compound = /^[a-zü]/.test(type) ? `${subj} ${type}` : `${subj}-${type}`;
+      const drop = new Set([si, ti]);
+      // Verbindungswörter zwischen Fach und Typ entfernen
+      for (let k = Math.min(si, ti) + 1; k < Math.max(si, ti); k++) if (/^(in|im|für|fuer|vom|von|zu|zum|zur)$/i.test(words[k])) drop.add(k);
+      const rest = words.filter((_, k) => !drop.has(k));
+      words = [compound, ...rest];
+    } else if (si >= 0 && si + 1 < words.length && /(test|prüfung|pruefung|vortrag|probe|referat|aufgabe|aufgaben)$/i.test(words[si + 1])) {
+      // "Englisch Vokabeltest" -> "Englisch-Vokabeltest"
+      const subj = SUBJECTS[words[si].toLowerCase()] || cap(words[si]);
+      words.splice(si, 2, `${subj}-${cap(words[si + 1])}`);
+    } else {
+      words = words.map((x) => SUBJECTS[x.toLowerCase()] || (TYPES[x.toLowerCase()] && /^[A-ZÄÖÜ]/.test(TYPES[x.toLowerCase()]) ? TYPES[x.toLowerCase()] : x));
+    }
+    return cap(words.join(' ').replace(/\s+/g, ' ').trim());
   }
 
   // Satz -> Termin-Felder
   function parseEvent(text, now = new Date()) {
-    let t = text;
+    let t = ' ' + text + ' ';
+    const nts = extractNotes(t); t = nts.text;
     const rep = DP.extractRepeat(t, now); t = rep.text;
     const rem = DP.extractReminder(t); t = rem.text;
-    const dat = DP.extractDate(t, now); t = dat.text;
-    const tim = DP.extractTime(t); t = tim.text;
+    const rng = DP.extractDateRange(t, now);
+    let dat;
+    if (rng) { dat = { date: rng.date, found: true }; t = rng.text; }
+    else { dat = DP.extractDate(t, now); t = dat.text; }
+    const tim = DP.extractTime(t, now); t = tim.text;
+    if (tim.relDate && !dat.found) dat = { date: tim.relDate, found: true };
     const dur = DP.extractDuration(t); t = dur.text;
     const loc = extractLocation(t); t = loc.text;
     let end = tim.end;
@@ -70,14 +165,23 @@
     if (!repeat && dat.weekly) repeat = 'weekly';
     let reminder = null;
     if (rem.reminder === 'default') reminder = /erinner/i.test(text) ? 0 : (tim.start ? 30 : 0);
-    else if (rem.reminder != null) reminder = rem.reminder;
+    else if (rem.reminder === 'vorabend') {
+      // Vorabend 18:00: Minuten bis zum Beginn (ganztägig: 07:00)
+      reminder = (S.toMin(tim.start || '07:00') + 24 * 60) - 18 * 60;
+    } else if (rem.reminder != null) reminder = rem.reminder;
+    const title = cleanTitle(t);
     return {
       ev: {
-        title: cleanTitle(t), date: dat.date, start: tim.start, end, category: detectCategory(text),
-        location: loc.location, repeat, interval: rep.interval, repeatUntil: rep.until, reminder,
+        title, date: dat.date, endDate: rng ? rng.endDate : null, start: tim.start, end,
+        category: detectCategory(text), location: loc.location, notes: nts.notes,
+        repeat, interval: rep.interval, repeatUntil: rep.until, reminder,
       },
       hasDate: dat.found,
       hasTime: !!tim.start,
+      found: {
+        date: dat.found, time: !!tim.start, location: !!loc.location, notes: !!nts.notes,
+        reminder: reminder != null, repeat: !!repeat, duration: !!dur.minutes,
+      },
     };
   }
 
@@ -167,6 +271,9 @@
       + '• **„Was habe ich diese Woche?“** · **„Welche Prüfungen kommen?“**\n'
       + '• **„Verschiebe Zahnarzt auf Donnerstag 15 Uhr“** · **„Lösche das Training morgen“**\n'
       + '• **„Wann habe ich morgen Zeit?“** · **„Wie lange noch bis zu den Ferien?“**\n'
+      + '• **„Klassenlager vom 19. bis 23. Oktober“** · **„Montag und Mittwoch 17 Uhr Klavier“**\n'
+      + '• **„Bio-Test am 24.10. über Zellen, S. 40–52, erinnere mich am Vorabend“**\n'
+      + '• Danach nachbessern: **„nein, um 10 Uhr“** · **„im Zimmer 12“** · **„heisst Mathe-Probe“**\n'
       + '• **„Erstelle einen Lernplan für die Bio-Prüfung“** · **„Französisch-Hausaufgabe erledigt“**\n'
       + '• **„Rückgängig“** macht die letzte Änderung ungeschehen.',
     chips: ['Was habe ich heute?', 'Diese Woche', 'Welche Prüfungen kommen?', 'Wann habe ich morgen Zeit?'],
@@ -175,46 +282,149 @@
   // ---------- Intents ----------
   function addEvents(text) {
     const now = new Date();
-    // Mehrere Termine in einem Satz: "Montag Mathe-Test und Mittwoch Bio-Test"
-    const parts = text.split(/\s+und\s+(?=\S)|;|\n/i).map((p) => p.trim()).filter(Boolean);
-    if (parts.length > 1 && parts.every((p) => DP.extractDate(p, now).found)) {
-      const made = parts.map((p) => finalizeAdd(parseEvent(p, now).ev));
+
+    // Mehrere Wochentage: "jeden Montag und Mittwoch Training", "Di, Do 18 Uhr Unihockey"
+    const WD = DP.WD_FULL;
+    const listRe = new RegExp(`${L}(jeden\\s+|immer\\s+|am\\s+)?((?:${WD})s?(?:\\s*(?:,|und|&|\\+)\\s*(?:${WD})s?)+)${R}`, 'iu');
+    const lm = text.match(listRe);
+    if (lm) {
+      const days = lm[2].toLowerCase().match(new RegExp(WD, 'giu'));
+      const weekly = /jeden|immer/i.test(lm[1] || '') || /s(?=\s*(?:,|und|&|\+|$))/i.test(lm[2]);
+      const rest = text.replace(lm[0], ' ');
+      const base = parseEvent(rest, now);
+      const made = [];
+      const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+      days.forEach((d, i) => {
+        const wd = DP.WEEKDAYS[d];
+        let delta = (wd - t0.getDay() + 7) % 7;
+        if (delta === 0 && !weekly) delta = 7;
+        const ev = { ...base.ev, date: S.ymd(S.addDays(t0, delta)), endDate: null };
+        if (weekly && !ev.repeat) ev.repeat = 'weekly';
+        if (!ev.title) ev.title = defaultTitle(ev);
+        made.push(finalizeAdd(ev, i > 0));
+      });
+      remember(made);
       return {
-        text: `Alles klar, ich habe ${plural(made.length, 'Termin', 'Termine')} eingetragen:`,
+        text: `Alles klar – ${plural(made.length, 'Termin', 'Termine')}${weekly ? ', jede Woche' : ''}:\n` + made.map((e) => `• ${summary(e)}`).join('\n'),
         cards: made.map((e) => ({ ...e, occDate: e.date })), chips: ['Rückgängig'],
       };
     }
+
+    // Mehrere Termine in einem Satz: "Montag Mathe-Test und Mittwoch Bio-Test"
+    const parts = text.split(/\s+und\s+(?=\S)|;|\n|,\s+(?=(?:am\s+|nächsten\s+)?(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|morgen|übermorgen|\d{1,2}\.))/i).map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 1 && parts.every((p) => DP.extractDate(p, now).found || DP.extractDateRange(p, now))) {
+      const made = parts.map((p, i) => {
+        const ev = parseEvent(p, now).ev;
+        if (!ev.title) ev.title = defaultTitle(ev);
+        return finalizeAdd(ev, i > 0);
+      });
+      remember(made);
+      return {
+        text: `Alles klar, ${plural(made.length, 'Termin', 'Termine')} eingetragen:\n` + made.map((e) => `• ${summary(e)}`).join('\n'),
+        cards: made.map((e) => ({ ...e, occDate: e.date })), chips: ['Rückgängig'],
+      };
+    }
+
     const p = parseEvent(text, now);
-    if (!p.ev.title) p.ev.title = p.ev.category !== 'sonstiges' ? S.CATEGORIES[p.ev.category].label : 'Termin';
     if (!p.hasDate) {
       if (p.hasTime) p.ev.date = (p.ev.start > S.fromMin(now.getHours() * 60 + now.getMinutes())) ? todayStr() : inDays(1);
       else {
+        if (!p.ev.title) p.ev.title = defaultTitle(p.ev);
         Bot.pending = { type: 'date', ev: p.ev };
         return { text: `Für wann soll ich **${esc(p.ev.title)}** eintragen?`, chips: ['Heute', 'Morgen', 'Übermorgen', 'Abbrechen'] };
       }
     }
-    return confirmAdd(finalizeAdd(p.ev));
+    if (!p.ev.title) {
+      Bot.pending = { type: 'title', ev: p.ev };
+      return { text: `Gern! Wie soll der Termin ${when({ ...p.ev, occDate: p.ev.date })} heissen?`, chips: ['Abbrechen'] };
+    }
+    const e = finalizeAdd(p.ev);
+    remember([e]);
+    return confirmAdd(e);
   }
 
-  function finalizeAdd(ev) {
+  function defaultTitle(ev) {
+    return ev.category !== 'sonstiges' ? S.CATEGORIES[ev.category].label : 'Termin';
+  }
+
+  function finalizeAdd(ev, silent = false) {
     if (!ev.title) ev.title = 'Termin';
     if (ev.reminder === 'default') ev.reminder = 0;
-    return S.add(ev);
+    return S.add(ev, { silent });
   }
 
-  function confirmAdd(e) {
-    let msg = `Eingetragen: **${esc(e.title)}** ${when({ ...e, occDate: e.date })}`;
-    if (e.repeat) {
-      const names = { daily: 'täglich', weekly: e.interval > 1 ? `alle ${e.interval} Wochen` : 'jede Woche', monthly: 'jeden Monat', yearly: 'jedes Jahr' };
-      msg += ` · wiederholt sich ${names[e.repeat]}${e.repeatUntil ? ' bis ' + DP.formatDate(e.repeatUntil) : ''}`;
+  // Zuletzt eingetragene Termine merken, damit "um 10 Uhr" oder "nein, Freitag" sie korrigieren kann
+  function remember(list) { Bot.last = { ids: list.map((e) => e.id), at: Date.now() }; }
+
+  const REPEAT_NAMES = (e) => ({ daily: 'täglich', weekly: e.interval > 1 ? `alle ${e.interval} Wochen` : 'jede Woche', monthly: 'jeden Monat', yearly: 'jedes Jahr' }[e.repeat]);
+
+  // Kurze Zusammenfassung aller erkannten Angaben
+  function summary(e) {
+    const bits = [`**${esc(e.title)}**`];
+    if (e.endDate) bits.push(`${DP.formatDate(e.date)} – ${DP.formatDate(e.endDate)}`);
+    else bits.push(DP.relLabel(e.date) ? `${DP.relLabel(e.date)} (${DP.formatDate(e.date)})` : DP.formatDate(e.date));
+    if (e.start) bits.push(e.end ? `${e.start}–${e.end}` : e.start);
+    if (e.location) bits.push(`📍 ${esc(e.location)}`);
+    return bits.join(' · ');
+  }
+
+  function confirmAdd(e, verb = 'Eingetragen') {
+    const lines = [`${verb}: ${summary(e)}`];
+    if (e.repeat) lines.push(`🔁 Wiederholt sich ${REPEAT_NAMES(e)}${e.repeatUntil ? ' bis ' + DP.formatDate(e.repeatUntil) : ''}`);
+    if (e.reminder != null) {
+      const [h, mi] = (e.start || '07:00').split(':').map(Number);
+      const at = new Date(S.parseYmd(e.date).getTime() + (h * 60 + mi - e.reminder) * 60000);
+      const atTxt = `${(DP.relLabel(S.ymd(at)) || DP.formatDate(S.ymd(at))).replace(/^(Heute|Morgen|Übermorgen)$/, (x) => x.toLowerCase())} um ${S.pad(at.getHours())}:${S.pad(at.getMinutes())}`;
+      lines.push(`🔔 Erinnerung ${e.reminder === 0 ? (e.start ? 'pünktlich' : 'am Morgen um 07:00') : atTxt}`);
     }
-    msg += '.';
-    if (e.reminder != null) msg += ` Ich erinnere dich ${e.reminder === 0 ? (e.start ? 'pünktlich' : 'am Morgen') : DP.formatMinutes(e.reminder) + ' vorher'}.`;
+    if (e.notes) lines.push(`📝 ${esc(e.notes).replace(/\n/g, ' · ')}`);
+    lines.push(`🏷️ ${S.CATEGORIES[e.category].label}`);
     const c = conflicts(e);
-    if (c.length) msg += `\n⚠️ Überschneidet sich mit **${esc(c[0].title)}** (${DP.formatTime(c[0])}).`;
+    if (c.length) lines.push(`⚠️ Überschneidet sich mit **${esc(c[0].title)}** (${DP.formatTime(c[0])}).`);
     const chips = ['Rückgängig'];
     if (e.category === 'pruefung' && e.date > todayStr()) chips.unshift(`Lernplan für ${e.title}`);
-    return { text: msg, cards: [{ ...e, occDate: e.date }], chips };
+    if (!e.start && !e.endDate) chips.push('Um 14 Uhr');
+    if (e.reminder == null) chips.push('Erinnere mich 1 Tag vorher');
+    return { text: lines.join('\n'), cards: [{ ...e, occDate: e.date }], chips };
+  }
+
+  // Nachtrag/Korrektur zum zuletzt eingetragenen Termin
+  function refineLast(text, force) {
+    if (!Bot.last || Date.now() - Bot.last.at > 15 * 60000) return null;
+    const ids = Bot.last.ids.filter((id) => S.get(id));
+    if (!ids.length) return null;
+    const correction = /^(nein|doch|lieber|eigentlich|sorry|korrektur|oh|ups|achso|ach so|stimmt nicht|falsch|ändere?|aendere?|und|noch|ausserdem|zusätzlich|plus)\b[\s,!.:]*/i;
+    const stripped = text.replace(correction, '').replace(/^(nicht\s+\S+\s*,?\s*sondern|sondern)\s+/i, '').trim();
+    const isCorrection = correction.test(text) || force || /^(heisst|heißt|nenn|titel)/i.test(stripped);
+    const p = parseEvent(stripped);
+    // Titel-Rest, der kein echter Inhalt ist
+    const titleLeft = p.ev.title && !/^(es|das|der|die|den|termin|ist|wäre|waere|lieber|bitte|erinnerung|kategorie)$/i.test(p.ev.title);
+    const catMatch = stripped.match(w('(?:kategorie\\s*:?\\s*|als\\s+)(schule|prüfung|pruefung|hausaufgabe|sport|freizeit|termin|sonstiges)'));
+    if (titleLeft && !isCorrection && !catMatch) return null;
+    const patch = {};
+    if (p.found.date) { patch.date = p.ev.date; if (p.ev.endDate) patch.endDate = p.ev.endDate; }
+    if (p.found.time) { patch.start = p.ev.start; patch.end = p.ev.end; }
+    else if (p.found.duration && p.ev.end) patch.end = p.ev.end;
+    if (p.found.location) patch.location = p.ev.location;
+    if (p.found.reminder) patch.reminder = p.ev.reminder;
+    if (p.found.repeat) { patch.repeat = p.ev.repeat; patch.interval = p.ev.interval; if (p.ev.repeatUntil) patch.repeatUntil = p.ev.repeatUntil; }
+    if (catMatch) {
+      const k = catMatch[1].toLowerCase().replace('ü', 'ue');
+      patch.category = { schule: 'schule', pruefung: 'pruefung', hausaufgabe: 'hausaufgabe', sport: 'sport', freizeit: 'freizeit', termin: 'termin', sonstiges: 'sonstiges' }[k];
+    }
+    if (/^(ganztägig|ganztaegig|den ganzen tag|ohne uhrzeit)$/i.test(stripped)) { patch.start = null; patch.end = null; }
+    if (/^(keine erinnerung|ohne erinnerung)$/i.test(stripped)) patch.reminder = null;
+    if (/(heisst|heißt|nenn\w*|titel)\s*:?\s*/i.test(stripped)) {
+      const nm = stripped.replace(/^.*?(heisst|heißt|nenn\w*(\s+es|\s+ihn)?|titel)\s*:?\s*/i, '').trim();
+      if (nm) patch.title = cap(nm.replace(/[."']+$/g, ''));
+    }
+    const ev0 = S.get(ids[0]);
+    if (p.found.notes) patch.notes = [ev0.notes, p.ev.notes].filter(Boolean).join('\n');
+    if (!Object.keys(patch).length) return null;
+    let last;
+    ids.forEach((id) => { last = S.update(id, patch); });
+    Bot.last.at = Date.now();
+    return confirmAdd(last, 'Aktualisiert');
   }
 
   function listEvents(text) {
@@ -416,10 +626,20 @@
         if (p.type === 'date') {
           const pe = parseEvent(text);
           if (pe.hasDate || pe.hasTime) {
-            const ev = { ...p.ev, date: pe.ev.date || todayStr(), start: pe.ev.start || p.ev.start, end: pe.ev.end || p.ev.end };
-            if (pe.ev.repeat) ev.repeat = pe.ev.repeat;
-            return confirmAdd(finalizeAdd(ev));
+            // Alle neu genannten Angaben übernehmen
+            const ev = { ...p.ev };
+            for (const [k, v] of Object.entries(pe.ev)) if (v != null && v !== '' && k !== 'title' && k !== 'category' && k !== 'interval') ev[k] = v;
+            if (!ev.date) ev.date = todayStr();
+            if (pe.ev.repeat) ev.interval = pe.ev.interval;
+            const e = finalizeAdd(ev); remember([e]);
+            return confirmAdd(e);
           }
+        }
+        if (p.type === 'title') {
+          const title = cleanTitle(text) || cap(text);
+          const ev = { ...p.ev, title, category: p.ev.category === 'sonstiges' ? detectCategory(text) : p.ev.category };
+          const e = finalizeAdd(ev); remember([e]);
+          return confirmAdd(e);
         }
       }
 
@@ -434,6 +654,7 @@
       }
       if (/^(danke|merci|thx|thanks|super|cool|nice|top|perfekt)\b/i.test(t)) return { text: 'Gern geschehen! 😊' };
 
+      if (/^(um 14 uhr|erinnere mich 1 tag vorher)$/i.test(t)) { const r = refineLast(text, true); if (r) return r; }
       const isQuestion = /\?\s*$/.test(t) || /^(was|wann|wie|welche\w*|zeig\w*|liste|übersicht|habe ich|hab ich|bin ich|gibt es|steht|muss ich|wo)\b/i.test(t);
 
       if (w('lernplan|lernzeiten|lernsessions?').test(t)) return studyPlan(text);
@@ -443,6 +664,11 @@
       if (/(wann (habe|hab) ich (\w+ )?zeit|freie? zeit|bin ich .*frei|(habe|hab) ich .*zeit|wann .*frei|zeitfenster|lücken?)/i.test(t)) return freeTime(text);
       if (/(wie lange (noch |dauert es )?(bis|geht es bis)|wie viele tage (noch |sind es )?(bis)|countdown|wann ist|wann (habe|hab) ich (wieder|die|den|das|meine?n?|nächste|naechste)|wann findet|wann kommt)/i.test(t)) return countdown(text);
       if (/^(such|find)\p{L}*\s+/iu.test(t)) return search(text);
+      // Nachtrag zum letzten Termin: "um 10 Uhr", "nein, am Freitag", "im Zimmer 12", "und erinnere mich vorher"
+      if (!isQuestion && !/^(heute|morgen|übermorgen|diese woche|nächste woche)\s*$/i.test(t)) {
+        const r = refineLast(text);
+        if (r) return r;
+      }
       if (isQuestion || /^(heute|morgen|übermorgen|diese woche|nächste woche|wochenübersicht|übersicht|termine|prüfungen|hausaufgaben)\s*$/i.test(t) || /was (habe|hab|steht|ist|läuft|mache|gibt|kommt)/i.test(t)) {
         if (!/(trag|füg|fueg|erstell|notier|speicher|merk)/i.test(t)) return listEvents(text);
       }

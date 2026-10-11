@@ -1,5 +1,5 @@
 // Offline-Unterstützung: App-Dateien zwischenspeichern
-const CACHE = 'kalender-v1';
+const CACHE = 'kalender-v2';
 const FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest',
   'js/store.js', 'js/dateparse.js', 'js/bot.js', 'js/ai.js', 'js/app.js', 'js/vendor/anthropic-sdk.mjs',

@@ -46,26 +46,32 @@
   const today = () => S.ymd(new Date());
 
   // ---------- Termin-Element ----------
-  function evItem(o, { actions = false, onDelete } = {}) {
+  function evItem(o, { actions = false, onDelete, timeCol = false, i = 0 } = {}) {
     const el = document.createElement('div');
     el.className = 'ev' + (o.done ? ' done' : '');
     el.style.setProperty('--cat', S.CATEGORIES[o.category].color);
+    el.style.setProperty('--i', i);
     el.setAttribute('role', 'button');
     el.tabIndex = 0;
     const meta = [];
-    meta.push(`<span>${icon('clock')}${escHtml(DP.formatTime(o))}</span>`);
+    if (actions) meta.push(`<span>${escHtml(DP.relLabel(o.occDate) || DP.formatDate(o.occDate))}</span>`);
+    if (!timeCol || o.endDate) meta.push(`<span>${icon('clock')}${escHtml(DP.formatTime(o))}</span>`);
     if (o.location) meta.push(`<span>${icon('pin')}${escHtml(o.location)}</span>`);
-    if (o.repeat) meta.push(`<span>${icon('repeat')}</span>`);
-    if (o.reminder != null) meta.push(`<span>${icon('bell')}</span>`);
-    const showDate = actions;
-    const dateLbl = showDate ? `<span>${escHtml(DP.relLabel(o.occDate) || DP.formatDate(o.occDate))}</span>` : '';
+    if (o.repeat) meta.push(`<span title="Wiederholt sich">${icon('repeat')}</span>`);
+    if (o.reminder != null) meta.push(`<span title="Erinnerung">${icon('bell')}</span>`);
+    if (o.notes) meta.push(`<span class="note">${escHtml(o.notes.length > 60 ? o.notes.slice(0, 58) + '…' : o.notes)}</span>`);
     const canCheck = o.category === 'hausaufgabe' && !o.repeat;
+    const tcol = timeCol
+      ? `<div class="tcol">${o.start ? `<b>${o.start}</b>${o.end ? `<span>${o.end}</span>` : ''}` : '<span class="allday">Ganzer Tag</span>'}</div>`
+      : '';
     el.innerHTML = `
+      ${tcol}<span class="bar"></span>
       ${canCheck ? `<button class="check ${o.done ? 'on' : ''}" aria-label="Erledigt">${o.done ? icon('check') : ''}</button>` : ''}
       <div class="body">
         <div class="ttl">${escHtml(o.title)}</div>
-        <div class="meta">${dateLbl}${meta.join('')}</div>
+        ${meta.length ? `<div class="meta">${meta.join('')}</div>` : ''}
       </div>
+      ${timeCol ? `<span class="tag">${escHtml(S.CATEGORIES[o.category].label)}</span>` : ''}
       ${actions ? `<div class="ev-actions"><button class="icon-btn edit" aria-label="Bearbeiten">${icon('edit')}</button><button class="icon-btn del" aria-label="Löschen">${icon('trash')}</button></div>` : ''}`;
     el.addEventListener('click', (e) => {
       if (e.target.closest('.check')) { e.stopPropagation(); S.update(o.id, { done: !o.done }); return; }
@@ -77,18 +83,50 @@
   }
 
   // ---------- Ansichten ----------
-  function render() {
+  function moveThumb(seg) {
+    const thumb = seg.querySelector('.seg-thumb');
+    const act = seg.querySelector('button.active');
+    if (!thumb || !act) return;
+    thumb.style.width = act.offsetWidth + 'px';
+    thumb.style.transform = `translateX(${act.offsetLeft - 3}px)`;
+  }
+
+  let lastTitle = '';
+  function setTitle(html) {
+    if (html === lastTitle) return;
+    lastTitle = html;
+    $('#title').innerHTML = `<span class="t-in">${html}</span>`;
+  }
+
+  function setHeader() {
+    const now = new Date();
+    const n = S.occurrences(today(), today()).length;
+    $('#eyebrow').textContent = `${DP.WD_LONG[now.getDay()]}, ${now.getDate()}. ${DP.MON_LONG[now.getMonth()]}`;
+    const exams = S.occurrences(today(), S.ymd(S.addDays(now, 13))).filter((o) => o.category === 'pruefung').length;
+    const parts = [n ? `<b>${n}</b> ${n === 1 ? 'Termin' : 'Termine'} heute` : 'Heute ist nichts geplant'];
+    if (exams) parts.push(`<b>${exams}</b> ${exams === 1 ? 'Prüfung' : 'Prüfungen'} in den nächsten 2 Wochen`);
+    $('#subtitle').innerHTML = parts.join(' · ');
+  }
+
+  function render(anim) {
     document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+    moveThumb($('#viewSeg'));
     const v = $('#view'); v.innerHTML = '';
     if (view === 'month') renderMonth(v);
     else if (view === 'week') renderWeek(v);
     else renderList(v);
     renderDayPanel();
+    setHeader();
+    if (typeof anim === 'string') {
+      v.classList.remove('anim-next', 'anim-prev', 'anim-fade');
+      void v.offsetWidth;
+      v.classList.add('anim-' + anim);
+    }
   }
 
   function renderMonth(v) {
     const y = cursor.getFullYear(), m = cursor.getMonth();
-    $('#title').textContent = `${DP.MON_LONG[m]} ${y}`;
+    setTitle(`${DP.MON_LONG[m]} <span class="yr">${y}</span>`);
     const first = new Date(y, m, 1);
     const start = DP.mondayOf(first);
     const weeks = Math.ceil((S.dayDiff(S.ymd(start), S.ymd(new Date(y, m + 1, 0))) + 1) / 7);
@@ -103,19 +141,25 @@
     for (let i = 0; i < weeks * 7; i++) {
       const d = S.addDays(start, i), key = S.ymd(d);
       const list = byDay[key] || [];
-      const cell = document.createElement('button');
-      cell.className = 'cell' + (d.getMonth() !== m ? ' other' : '') + (key === today() ? ' today' : '') + (key === selected ? ' selected' : '');
+      // div statt button: Buttons schrumpfen in Safari-Grids nicht, langer Text würde überlaufen
+      const cell = document.createElement('div');
+      cell.setAttribute('role', 'button');
+      cell.tabIndex = 0;
+      cell.className = 'cell' + (d.getMonth() !== m ? ' other' : '') + (key === today() ? ' today' : '')
+        + (key === selected ? ' selected' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' weekend' : '');
       cell.setAttribute('aria-label', DP.formatDate(key, true) + (list.length ? `, ${list.length} Termine` : ''));
       const pills = list.slice(0, 3).map((o) =>
-        `<div class="mini${o.done ? ' done' : ''}" style="--cat:${S.CATEGORIES[o.category].color}">${o.start ? `<span class="t">${o.start}</span>` : ''}<span>${escHtml(o.title)}</span></div>`).join('');
+        `<div class="mini${o.done ? ' done' : ''}" style="--cat:${S.CATEGORIES[o.category].color}" title="${escHtml(o.title)}">${o.start && !o.multi ? `<span class="t">${o.start}</span>` : ''}<span>${escHtml(o.title)}</span></div>`).join('');
       const more = list.length > 3 ? `<div class="more">+${list.length - 3} weitere</div>` : '';
       const dots = list.slice(0, 4).map((o) => `<i style="--cat:${S.CATEGORIES[o.category].color}"></i>`).join('');
       cell.innerHTML = `<span class="num">${d.getDate()}</span><div class="pills">${pills}${more}</div><div class="dots">${dots}</div>`;
-      cell.addEventListener('click', () => {
+      const pick = () => {
         selected = key;
-        if (d.getMonth() !== m) cursor = new Date(d.getFullYear(), d.getMonth(), 1);
-        render();
-      });
+        if (d.getMonth() !== m) { cursor = new Date(d.getFullYear(), d.getMonth(), 1); render(d < first ? 'prev' : 'next'); }
+        else render();
+      };
+      cell.addEventListener('click', pick);
+      cell.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
       cell.addEventListener('dblclick', () => openEvent(null, key));
       grid.appendChild(cell);
     }
@@ -125,24 +169,24 @@
   function renderWeek(v) {
     const mo = DP.mondayOf(cursor), su = S.addDays(mo, 6);
     const sameMonth = mo.getMonth() === su.getMonth();
-    $('#title').textContent = sameMonth
+    setTitle(sameMonth
       ? `${mo.getDate()}.–${su.getDate()}. ${DP.MON_LONG[su.getMonth()]}`
-      : `${mo.getDate()}. ${DP.MON_SHORT[mo.getMonth()]} – ${su.getDate()}. ${DP.MON_SHORT[su.getMonth()]}`;
+      : `${mo.getDate()}. ${DP.MON_SHORT[mo.getMonth()]} – ${su.getDate()}. ${DP.MON_SHORT[su.getMonth()]}`);
     const occ = S.occurrences(S.ymd(mo), S.ymd(su));
     const wrap = document.createElement('div'); wrap.className = 'week';
     for (let i = 0; i < 7; i++) {
       const d = S.addDays(mo, i), key = S.ymd(d);
       const col = document.createElement('div');
       col.className = 'wcol' + (key === today() ? ' today' : '');
-      col.innerHTML = `<div class="wcol-head"><span>${DP.WD_SHORT[d.getDay()]}</span><b>${d.getDate()}</b></div>`;
+      col.style.setProperty('--i', i);
+      col.innerHTML = `<div class="wcol-head" title="Termin hinzufügen"><span>${DP.WD_SHORT[d.getDay()]}</span><b>${d.getDate()}</b></div>`;
       col.querySelector('.wcol-head').addEventListener('click', () => openEvent(null, key));
-      const list = occ.filter((o) => o.occDate === key);
-      if (!list.length) col.insertAdjacentHTML('beforeend', '<span class="empty-day"></span>');
-      for (const o of list) {
+      for (const o of occ.filter((x) => x.occDate === key)) {
         const b = document.createElement('button');
         b.className = 'wev' + (o.done ? ' done' : '');
         b.style.setProperty('--cat', S.CATEGORIES[o.category].color);
-        b.innerHTML = `<div class="t">${escHtml(DP.formatTime(o))}</div><div class="n">${escHtml(o.title)}</div>`;
+        b.innerHTML = `<div class="t">${escHtml(o.multi ? 'Mehrtägig' : DP.formatTime(o))}</div><div class="n">${escHtml(o.title)}</div>`;
+        b.title = o.title;
         b.addEventListener('click', () => openEvent(o.id, o.occDate));
         col.appendChild(b);
       }
@@ -153,21 +197,21 @@
 
   function renderList(v) {
     const from = S.ymd(cursor), to = S.ymd(S.addDays(cursor, 59));
-    $('#title').textContent = `Ab ${DP.formatDate(from)}`;
+    setTitle(`Ab ${DP.formatDate(from)}`);
     const occ = S.occurrences(from, to);
-    if (!occ.length) { v.innerHTML = '<div class="empty">In den nächsten 60 Tagen ist nichts eingetragen.<br>Sag dem Assistenten einfach, was ansteht.</div>'; return; }
+    if (!occ.length) { v.innerHTML = '<div class="empty"><span class="em-title">Alles frei.</span>In den nächsten 60 Tagen ist nichts eingetragen.</div>'; return; }
     const wrap = document.createElement('div'); wrap.className = 'agenda';
-    let cur = null, list = null;
+    let cur = null, list = null, n = 0;
     for (const o of occ) {
       if (o.occDate !== cur) {
         cur = o.occDate;
         const day = document.createElement('div'); day.className = 'agenda-day';
         const rel = DP.relLabel(cur);
-        day.innerHTML = `<h4>${rel ? `<span class="rel">${rel}</span>` : ''}${escHtml(DP.formatDate(cur, true))}</h4>`;
+        day.innerHTML = `<h4>${escHtml(DP.formatDate(cur, true))}${rel ? `<span class="rel">${rel}</span>` : ''}</h4>`;
         list = document.createElement('div'); list.className = 'ev-list';
         day.appendChild(list); wrap.appendChild(day);
       }
-      list.appendChild(evItem(o));
+      list.appendChild(evItem(o, { timeCol: true, i: Math.min(n++, 12) }));
     }
     v.appendChild(wrap);
   }
@@ -182,9 +226,12 @@
     head.querySelector('.add-link').addEventListener('click', () => openEvent(null, selected));
     p.appendChild(head);
     const occ = S.occurrences(selected, selected);
-    if (!occ.length) { p.insertAdjacentHTML('beforeend', '<div class="empty">Nichts geplant.</div>'); return; }
+    if (!occ.length) {
+      p.insertAdjacentHTML('beforeend', '<div class="empty"><span class="em-title">Nichts geplant.</span>Geniess den freien Tag – oder sag dem Assistenten, was ansteht.</div>');
+      return;
+    }
     const list = document.createElement('div'); list.className = 'ev-list';
-    occ.forEach((o) => list.appendChild(evItem(o)));
+    occ.forEach((o, i) => list.appendChild(evItem(o, { timeCol: true, i })));
     p.appendChild(list);
   }
 
@@ -192,14 +239,17 @@
     if (view === 'month') cursor = new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1);
     else if (view === 'week') cursor = S.addDays(cursor, dir * 7);
     else cursor = S.addDays(cursor, dir * 30);
-    render();
+    render(dir > 0 ? 'next' : 'prev');
   }
-  function goToday() { cursor = new Date(); cursor.setHours(0, 0, 0, 0); selected = today(); render(); }
+  function goToday() { cursor = new Date(); cursor.setHours(0, 0, 0, 0); selected = today(); render('fade'); }
   function showDate(ymd) {
+    const before = selected;
     selected = ymd;
     const d = S.parseYmd(ymd);
-    cursor = view === 'month' ? new Date(d.getFullYear(), d.getMonth(), 1) : d;
-    render();
+    const newCursor = view === 'month' ? new Date(d.getFullYear(), d.getMonth(), 1) : d;
+    const moved = S.ymd(newCursor) !== S.ymd(cursor) && view !== 'list';
+    if (view !== 'list') cursor = newCursor;
+    render(moved ? (ymd > before ? 'next' : 'prev') : undefined);
   }
 
   $('#prevBtn').onclick = () => go(-1);
@@ -207,13 +257,15 @@
   $('#todayBtn').onclick = goToday;
   $('#addBtn').onclick = () => openEvent(null, view === 'month' ? selected : today());
   document.querySelectorAll('#viewSeg button').forEach((b) => b.addEventListener('click', () => {
+    if (view === b.dataset.view) return;
     view = b.dataset.view;
     try { localStorage.setItem(VKEY, view); } catch {}
     if (view === 'month') cursor = new Date(S.parseYmd(selected).getFullYear(), S.parseYmd(selected).getMonth(), 1);
     else if (view === 'week') cursor = S.parseYmd(selected);
     else cursor = S.parseYmd(today());
-    render();
+    render('fade');
   }));
+  window.addEventListener('resize', () => { moveThumb($('#viewSeg')); });
 
   // Wischen auf dem Handy
   let touchX = null, touchY = null;
@@ -260,6 +312,7 @@
     form.reset();
     form.title.value = ev?.title || '';
     form.date.value = ev?.date || date || today();
+    form.endDate.value = ev?.endDate || '';
     form.allday.checked = ev ? !ev.start : false;
     form.start.value = ev?.start || (ev ? '' : nextHour());
     form.end.value = ev?.end || '';
@@ -283,6 +336,7 @@
     const data = {
       title: form.title.value.trim() || 'Termin',
       date: form.date.value,
+      endDate: form.endDate.value && form.endDate.value > form.date.value ? form.endDate.value : null,
       start: allday ? null : form.start.value || null,
       end: allday ? null : form.end.value || null,
       category: currentCat,
@@ -406,9 +460,10 @@
 
   function setChips(list) {
     const c = $('#chips'); c.innerHTML = '';
-    list.forEach((t) => {
+    list.forEach((t, i) => {
       const b = document.createElement('button');
       b.className = 'chip'; b.textContent = t; b.type = 'button';
+      b.style.setProperty('--i', i);
       b.onclick = () => send(t);
       c.appendChild(b);
     });
@@ -429,6 +484,7 @@
     if (!useAi) { addBot(window.Bot.handle(text)); return; }
 
     busy = true; updateSend();
+    $('#chatStatus').textContent = 'denkt nach …';
     const typing = document.createElement('div');
     typing.className = 'msg bot'; typing.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
     msgs.appendChild(typing); scrollDown();
@@ -442,7 +498,7 @@
       const res = window.Bot.handle(text);
       res.text = `${why}\nIch versuche es mit dem eingebauten Assistenten:\n\n${res.text}`;
       addBot(res);
-    } finally { busy = false; updateSend(); }
+    } finally { busy = false; updateSend(); $('#chatStatus').textContent = 'Bereit'; }
   }
 
   function updateSend() { $('#sendBtn').disabled = busy || !input.value.trim(); }
@@ -549,6 +605,7 @@
   function syncSettingsUi() {
     const st = S.settings;
     document.querySelectorAll('#themeSeg button').forEach((b) => b.classList.toggle('active', b.dataset.themeSet === st.theme));
+    requestAnimationFrame(() => moveThumb($('#themeSeg')));
     $('#notifToggle').checked = st.notifications;
     $('#aiToggle').checked = st.aiEnabled;
     $('#apiKey').value = st.apiKey;

@@ -50,6 +50,7 @@
       id: ev.id || uid(),
       title: (ev.title || 'Termin').trim(),
       date: ev.date,
+      endDate: ev.endDate && ev.endDate > ev.date && !ev.repeat ? ev.endDate : null, // mehrtägig (inklusive)
       start: ev.start || null,
       end: ev.end || null,
       category: CATEGORIES[ev.category] ? ev.category : 'sonstiges',
@@ -70,7 +71,15 @@
     const out = [];
     for (const ev of events) {
       if (!ev.repeat) {
-        if (ev.date >= from && ev.date <= to) out.push({ ...ev, occDate: ev.date });
+        if (ev.endDate) {
+          // mehrtägig: ein Vorkommen pro Tag
+          let d = ev.date < from ? from : ev.date;
+          const last = ev.endDate < to ? ev.endDate : to;
+          for (let i = 0; d <= last && i < 400; i++) {
+            out.push({ ...ev, occDate: d, multi: { first: d === ev.date, last: d === ev.endDate } });
+            d = ymd(addDays(parseYmd(d), 1));
+          }
+        } else if (ev.date >= from && ev.date <= to) out.push({ ...ev, occDate: ev.date });
         continue;
       }
       const last = ev.repeatUntil && ev.repeatUntil < to ? ev.repeatUntil : to;

@@ -18,11 +18,12 @@
         properties: {
           title: str('Kurzer Titel, z.B. "Mathe-Prüfung"'),
           date: str('Datum YYYY-MM-DD'),
+          end_date: str('Letzter Tag bei mehrtägigen Terminen YYYY-MM-DD, optional'),
           start: str('Startzeit HH:MM (24h), optional'),
           end: str('Endzeit HH:MM, optional'),
           category: { type: 'string', enum: CATS },
           location: str('Ort, optional'),
-          notes: str('Notizen, optional'),
+          notes: str('Alle weiteren Details: Thema, Seiten/Aufgaben, was mitnehmen, mit wem usw. Optional'),
           repeat: { type: 'string', enum: ['daily', 'weekly', 'monthly', 'yearly'], description: 'Wiederholung, optional' },
           interval: { type: 'integer', description: 'Wiederholungsintervall, z.B. 2 = alle 2 Wochen' },
           repeat_until: str('Letztes Datum der Serie YYYY-MM-DD, optional'),
@@ -52,7 +53,7 @@
         type: 'object',
         properties: {
           id: str('id des Termins'),
-          title: { type: 'string' }, date: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' },
+          title: { type: 'string' }, date: { type: 'string' }, end_date: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' },
           category: { type: 'string', enum: CATS }, location: { type: 'string' }, notes: { type: 'string' },
           repeat: { type: 'string', enum: ['none', 'daily', 'weekly', 'monthly', 'yearly'] },
           reminder_minutes: { type: 'integer' }, done: { type: 'boolean', description: 'Aufgabe erledigt' },
@@ -99,7 +100,7 @@
   ];
 
   const brief = (o) => ({
-    id: o.id, title: o.title, date: o.occDate || o.date, start: o.start, end: o.end, category: o.category,
+    id: o.id, title: o.title, date: o.occDate || o.date, end_date: o.endDate || undefined, start: o.start, end: o.end, category: o.category,
     location: o.location || undefined, repeat: o.repeat || undefined, done: o.done || undefined, notes: o.notes || undefined,
   });
 
@@ -107,7 +108,7 @@
     switch (name) {
       case 'create_event': {
         const e = S.add({
-          title: input.title, date: input.date, start: input.start || null, end: input.end || null,
+          title: input.title, date: input.date, endDate: input.end_date, start: input.start || null, end: input.end || null,
           category: input.category, location: input.location, notes: input.notes, repeat: input.repeat || null,
           interval: input.interval, repeatUntil: input.repeat_until, reminder: input.reminder_minutes,
         });
@@ -127,6 +128,7 @@
       case 'update_event': {
         const patch = {};
         for (const k of ['title', 'date', 'start', 'end', 'category', 'location', 'notes', 'done']) if (input[k] !== undefined) patch[k] = input[k] === '' ? null : input[k];
+        if (input.end_date !== undefined) patch.endDate = input.end_date || null;
         if (input.repeat) patch.repeat = input.repeat === 'none' ? null : input.repeat;
         if (input.reminder_minutes !== undefined) patch.reminder = input.reminder_minutes;
         const u = S.update(input.id, patch);
@@ -170,6 +172,9 @@ Heute ist ${DP.WD_LONG[now.getDay()]}, ${S.ymd(now)}, es ist ${S.pad(now.getHour
 Verwalte den Kalender mit den Tools: eintragen, suchen, ändern, verschieben, löschen, freie Zeit finden, Lernpläne vor Prüfungen erstellen (mehrere Lerneinheiten in freien Zeitfenstern vor der Prüfung).
 Regeln:
 - Antworte kurz, freundlich und locker auf Deutsch (Schweizer Rechtschreibung: "ss" statt "ß").
+- Lies jede Nachricht genau und übernimm ALLE Angaben: Titel (kurz und sauber, z.B. "Mathe-Prüfung"), Datum, Uhrzeit, Dauer/Ende, Ort, Wiederholung, Erinnerung, mehrtägige Zeiträume (end_date) und alles Weitere (Thema, Seiten, Mitnehmen, Personen) in notes.
+- Mehrere Termine in einer Nachricht = mehrere create_event-Aufrufe.
+- Bezieht sich eine Nachricht offensichtlich auf den eben eingetragenen Termin ("nein, um 10", "im Zimmer 12"), ändere diesen mit update_event statt einen neuen anzulegen.
 - Handle direkt, ohne unnötige Rückfragen. Frag nur nach, wenn das Datum wirklich unklar ist.
 - Vor Ändern oder Löschen zuerst mit list_events die id finden.
 - Kategorien: schule, pruefung (Tests, Vorträge), hausaufgabe (auch Lernen), sport, freizeit, termin (Arzt usw.), sonstiges.
